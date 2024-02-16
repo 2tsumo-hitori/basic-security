@@ -1,11 +1,14 @@
 package io.security.basicsecurity.config;
 
+import io.security.basicsecurity.config.filter.AjaxLoginProcessingFilter;
 import io.security.basicsecurity.config.handler.CustomAccessDeniedHandler;
+import io.security.basicsecurity.config.provider.AjaxAuthenticationProvider;
 import io.security.basicsecurity.config.provider.CustomAuthenticationProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationDetailsSource;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -16,6 +19,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.ExceptionHandlingConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer.FrameOptionsConfig;
@@ -30,7 +34,13 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.servlet.util.matcher.MvcRequestMatcher;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
+import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
+
+import static org.springframework.http.HttpMethod.POST;
 
 @Configuration
 @EnableWebSecurity
@@ -56,6 +66,24 @@ public class SecurityConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         return new CustomAuthenticationProvider(userDetailsService, passwordEncoder());
+    }
+
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+        CustomAccessDeniedHandler accessDeniedHandler = new CustomAccessDeniedHandler();
+
+        accessDeniedHandler.setErrorPage("/denied");
+
+        return accessDeniedHandler;
+    }
+
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring()
+                .requestMatchers(PathRequest.toStaticResources().atCommonLocations())
+                .requestMatchers(new AntPathRequestMatcher("/api/**"))
+                .requestMatchers("/favicon.ico", "/resources/**", "/error");
+        // 얘는 보안 필터의 범위 밖
     }
 
     @Bean
@@ -91,22 +119,4 @@ public class SecurityConfig {
 
         return http.build();
     }
-
-    @Bean
-    public AccessDeniedHandler accessDeniedHandler() {
-        CustomAccessDeniedHandler accessDeniedHandler = new CustomAccessDeniedHandler();
-
-        accessDeniedHandler.setErrorPage("/denied");
-
-        return accessDeniedHandler;
-    }
-
-    @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) -> web.ignoring()
-                .requestMatchers(PathRequest.toStaticResources().atCommonLocations())
-                .requestMatchers("/favicon.ico", "/resources/**", "/error");
-        // 얘는 보안 필터의 범위 밖
-    }
-
 }
